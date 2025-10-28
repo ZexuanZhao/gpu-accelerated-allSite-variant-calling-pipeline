@@ -41,7 +41,7 @@ The following configuration options adjust variant filtering in `rules/4.vcf_fil
 - `f_missing_max`: maximum allowed fraction of missing genotypes (default `0.5`).
 
 ## Usage:
-`snakemake --use-conda --use-singularity --singularity-args '--nv -B .:/dum' --cores [ncpu] --resources gpus=[ngpu] mem_gb=[mem]`
+`snakemake --use-conda --use-singularity --singularity-args '--nv -B .:/dum --no-home -B $HOME:$HOME' --cores [ncpu] --resources gpus=[ngpu] mem_gb=[mem] `
 
 ## Notes:
  - `clara-parabricks` now require 38Gb GPU memory for `fq2bam`. Therefore, `--low-memory` option is used in this step.
