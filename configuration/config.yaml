@@ -7,7 +7,7 @@ sample_sheet: "test_data/sample_sheet.csv"
 outdir: "test_variant_calling"
 
 ## Docker image path
-clara-parabricks: "docker://nvcr.io/nvidia/clara/clara-parabricks:4.4.0-1"
+clara-parabricks: "docker://nvcr.io/nvidia/clara/clara-parabricks:4.6.0-1"
 
 ## Some parameters
 ### window size for calculating coverage
