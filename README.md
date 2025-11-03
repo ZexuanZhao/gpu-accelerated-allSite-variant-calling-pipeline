@@ -1,13 +1,13 @@
 # *ALLSITE* Variant Calling from Illumina Reads using GPU
 
 ## Overview
-This repository contains a GPU-accelerated Snakemake workflow that calls both variant and non-variant sites from multi-sample Illumina reads using the GATK4 GPU implementation in NVIDIA's Clara Parabricks container. The pipeline is compatible with tools such as [`pixy`](https://pixy.readthedocs.io/en/latest/). Users supply a sample sheet and a configuration YAML specifying project metadata, reference genome, output directory, container image, and pipeline parameters such as window size, number of intervals, and per-interval memory. Snakemake and Singularity must be installed, and runs should reserve ample CPU cores, GPU resources, and memory (≤80% of the host) because some rules require more than 20 threads and high memory usage.
+This repository contains a GPU-accelerated Snakemake workflow that calls both variant and non-variant sites from multi-sample Illumina reads using the GATK4 GPU implementation in NVIDIA's Clara Parabricks container. The pipeline is compatible with downstream tools such as [`pixy`](https://pixy.readthedocs.io/en/latest/). Users provide a sample sheet and modify the configuration YAML file. Snakemake and Singularity must be installed to initiate the pipeline, ideally by `conda`/`mamba`.
 
 ## Structure and Key Components
 - **Snakefile** – Imports the configuration and sample sheet, pulls in rule modules, and defines the final `all` target for QC reports and filtered VCFs.
 - **Environment definitions** – Conda YAMLs provide toolchains: `envs/envs.yaml` for general bioinformatics utilities, `envs/gatk4.yaml` for GATK, and `envs/blast.yaml` for low-complexity filtering via BLAST’s `dustmasker`.
 - **Rules** (in `rules/`):
-  - **0.qc.smk** – FastQC on trimmed reads, BAM stats, windowed coverage, Qualimap, bcftools and vcftools statistics, and a final MultiQC summary.
+  - **0.qc.smk** – FastQC on trimmed reads, BAM stats, windowed coverage, Qualimap, bcftools and vcftools statistics, a MultiQC summary, and compress all QC results into a zip file.
   - **1.preprocessing.smk** – Trims raw FASTQ files with `fastp`, producing paired/unpaired reads and QC reports.
   - **2.mapping.smk** – Copies and indexes the reference, then maps reads using Clara Parabricks’ GPU-accelerated `pbrun fq2bam` command, embedding read-group information and writing BAM files.
   - **3.variant_calling.smk** – Runs GPU-enabled `pbrun haplotypecaller` per sample, splits the reference into N intervals, builds a GenomicsDB, genotypes all sites in parallel, and merges the interval VCFs.
@@ -31,6 +31,11 @@ This repository contains a GPU-accelerated Snakemake workflow that calls both va
    - `w_size`: non-overlapping window size for reporting sequencing depths across the genome
    - `split_n`: number of independent jobs of `gatk` for parallelism
    - `memory_gb_per_interval`: memory in Gb for each independent `gatk` job
+
+## Output files:
+   - `vcf_final/*.allSite.vcf.gz`: compressed and filtered *ALLSITE* vcf file.
+   - `vcf_final/*.HQSNPs.vcf.gz` : compressed and filtered high-quality vcf file of only SNPs.
+   - `qc/*_qc_files.zip`: compressed files of all QC results.
 
 ## Filtering parameters
 The following configuration options adjust variant filtering in `rules/4.vcf_filtering.smk`:
