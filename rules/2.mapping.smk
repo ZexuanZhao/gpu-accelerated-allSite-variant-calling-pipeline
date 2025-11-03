@@ -20,8 +20,8 @@ rule index_reference:
         os.path.join(config["outdir"],"logs","index_ref","index_ref.log")
     shell:
         """
-        bwa index {input.ref}
-        samtools faidx {input.ref}
+        bwa index {input.ref} >{log} 2>{log}
+        samtools faidx {input.ref} >{log} 2>{log}
         """
 
 rule bwa_gpu:

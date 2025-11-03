@@ -1,4 +1,5 @@
 ## Quality check of trimmed reads
+## Summarized by multiQC
 rule fastqc_after_trimming:
     conda:
         os.path.join(workflow.basedir, "envs/envs.yaml")
@@ -17,6 +18,7 @@ rule fastqc_after_trimming:
         """
 
 ## Mapping rates etc.
+## Summarized by multiQC
 rule bamstats:
     conda:
         os.path.join(workflow.basedir, "envs/envs.yaml")
@@ -67,6 +69,7 @@ rule genomeCov:
         """
 
 ## Qualimap: insert size, GC, coverage...
+## Summarized by multiQC
 rule Qualimap:
     conda:
         os.path.join(workflow.basedir,"envs/envs.yaml")
@@ -93,11 +96,12 @@ rule Qualimap:
         """
 
 ## vcf stats using bcftools
+## Summarized by multiQC
 rule vcf_stats:
     conda:
         os.path.join(workflow.basedir, "envs/envs.yaml")
     input:
-        os.path.join(config["outdir"], "vcf_filtered", config["project"]+".removeLowQual"+".lcm"+".HQSNPs"+".vcf.gz")
+        os.path.join(config["outdir"],"vcf_final",config["project"] + ".removeLowQual" + ".lcm" + ".HQSNPs" + ".vcf.gz")
     output:
         os.path.join(config["outdir"],"qc", "bcftools_stats", config["project"]+".removeLowQual"+".lcm"+".HQSNPs"+".vcf.stats")
     threads:
@@ -108,6 +112,7 @@ rule vcf_stats:
         """
 
 ## Visualize vcf stats
+## Summarized by multiQC
 rule plot_vcfstats:
     conda:
         os.path.join(workflow.basedir, "envs/envs.yaml")
@@ -127,42 +132,21 @@ rule plot_vcfstats:
             {input}
         """
 
-## Quality check of vcf files using vcftools
-rule qc_vcf:
-    conda:
-        os.path.join(workflow.basedir, "envs/envs.yaml")
-    input:
-        os.path.join(config["outdir"], "vcf_filtered", config["project"]+".removeLowQual"+".lcm"+".HQSNPs"+".vcf.gz")
-    output:
-        os.path.join(config["outdir"], "qc", "vcftools", config["project"]+".het")
-    params:
-        outdir = os.path.join(config["outdir"], "qc", "vcftools"),
-        proj = config["project"]
-    threads:
-        1
-    log:
-        os.path.join(config["outdir"],"logs","vcftools","vcftools.log")
-    shell:
-        """
-        vcftools --gzvcf {input} --freq2 --max-alleles 2 --out {params.outdir}/{params.proj} >{log} 2>{log}
-        vcftools --gzvcf {input} --depth --out {params.outdir}/{params.proj} >{log} 2>{log}
-        vcftools --gzvcf {input} --site-mean-depth --out {params.outdir}/{params.proj} >{log} 2>{log}
-        vcftools --gzvcf {input} --site-quality --out {params.outdir}/{params.proj} >{log} 2>{log}
-        vcftools --gzvcf {input} --missing-indv --out {params.outdir}/{params.proj} >{log} 2>{log}
-        vcftools --gzvcf {input} --missing-site --out {params.outdir}/{params.proj} >{log} 2>{log}
-        vcftools --gzvcf {input} --het --out {params.outdir}/{params.proj} >{log} 2>{log}
-        """
-
 ## Summarize all qc files using multiqc
 rule multiqc:
     conda:
         os.path.join(workflow.basedir, "envs/envs.yaml")
     input:
+        ## Fastp reports of reads
+        expand(os.path.join(config["outdir"],"qc","fastp","{sample}.fastp.json"),sample=sample_sheet.index),
+        ## Fastqc reads after trimming adaptors
+        expand(os.path.join(config["outdir"],"qc","fastqc","{sample}.{R}_fastqc.zip"),sample=sample_sheet.index,R=["1P", "2P"]),
+        ## Qualimap report of alignment
         expand(os.path.join(config["outdir"],"qc","qualimap","{sample}", "qualimapReport.html"), sample= sample_sheet.index),
-        expand(os.path.join(config["outdir"],"qc", "fastqc", "{sample}.{R}_fastqc.zip"), sample= sample_sheet.index, R=["1P", "2P"]),
+        ## Bamtools report of alignment
         expand(os.path.join(config["outdir"], "qc", "bamtools","{sample}_bamtools.stats"), sample= sample_sheet.index),
-        expand(os.path.join(config["outdir"],"qc","fastp","{sample}.fastp.json"), sample= sample_sheet.index),
-        os.path.join(config["outdir"],"qc", "bcftools_stats", config["project"]+".removeLowQual"+".lcm"+".HQSNPs"+".vcf.stats")
+        ## Bcftools stats of HQ SNPs
+        os.path.join(config["outdir"],"qc", "bcftools_stats", config["project"]+".removeLowQual"+".lcm"+".HQSNPs"+".vcf.stats"),
     output:
         os.path.join(config["outdir"],"qc","multiqc", config["project"]+"_multiqc_report.html")
     params:
@@ -181,4 +165,56 @@ rule multiqc:
         {params.input_dir} \
         >{log} 2>{log}; \
         mv {params.original_output} {output}
+        """
+
+rule count_called_sites:
+    conda:
+        os.path.join(workflow.basedir,"envs/envs.yaml")
+    input:
+        os.path.join(config["outdir"],"vcf_final",config["project"] + ".removeLowQual" + ".lcm" + ".allSite" + ".vcf.gz")
+    output:
+        os.path.join(config["outdir"],"qc", config["project"] + "_count_sites.tsv")
+    threads:
+        10
+    shell:
+        """
+        python scripts/count_called_sites_bcftools.py \
+            --threads {threads} \
+            --pass-only \
+            {input} \
+            > {output}
+        """
+
+rule pack_qc_reports:
+    input:
+        os.path.join(config["outdir"],"qc","multiqc",config["project"] + "_multiqc_report.html"),
+        expand(os.path.join(config["outdir"],"qc","coverage","{sample}_coverage.txt"), sample = sample_sheet.index),
+        count_sites=os.path.join(config["outdir"],"qc",config["project"] + "_count_sites.tsv")
+    params:
+        fastp_dir=os.path.join(config["outdir"], "qc", "fastp"),
+        fastqc_dir=os.path.join(config["outdir"], "qc", "fastqc"),
+        qualimap_dir=os.path.join(config["outdir"], "qc", "qualimap"),
+        bamtools_dir=os.path.join(config["outdir"], "qc", "bamtools"),
+        coverage_dir=os.path.join(config["outdir"], "qc", "coverage"),
+        bcftools_stats_dir=os.path.join(config["outdir"],"qc", "bcftools_stats"),
+        multiqc_dir=os.path.join(config["outdir"],"qc","multiqc"),
+        zip_dir=os.path.join(config["outdir"],"qc", config["project"] + "_qc_files")
+    output:
+        os.path.join(config["outdir"],"qc", config["project"] + "_qc_files.zip")
+    shell:
+        """
+            # fresh staging dir
+            rm -rf "{params.zip_dir}"
+            mkdir -p "{params.zip_dir}"
+            
+            mv {params.fastp_dir} {params.zip_dir}
+            mv {params.fastqc_dir} {params.zip_dir}
+            mv {params.qualimap_dir} {params.zip_dir}
+            mv {params.bamtools_dir} {params.zip_dir}
+            mv {params.coverage_dir} {params.zip_dir}
+            mv {params.bcftools_stats_dir} {params.zip_dir}
+            mv {params.multiqc_dir} {params.zip_dir}
+            mv {input.count_sites} {params.zip_dir}
+            
+            zip -r {output} {params.zip_dir}
         """

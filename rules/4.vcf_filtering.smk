@@ -120,7 +120,7 @@ rule mergeRefCallsAndHQSNPs:
         os.path.join(workflow.basedir,"envs/gatk4.yaml")
     input:
         non_variant=os.path.join(config["outdir"], "vcf_filtered", config["project"]+".removeLowQual"+".lcm"+".refCalls"+".vcf.gz"),
-        variant=os.path.join(config["outdir"], "vcf_filtered", config["project"]+".removeLowQual"+".lcm"+".HQSNPs"+".vcf.gz")
+        variant=os.path.join(config["outdir"],"vcf_final",config["project"] + ".removeLowQual" + ".lcm" + ".HQSNPs" + ".vcf.gz")
     output:
         os.path.join(config["outdir"], "vcf_final", config["project"]+".removeLowQual"+".lcm"+".allSite"+".vcf.gz")
     threads:
@@ -138,4 +138,17 @@ rule mergeRefCallsAndHQSNPs:
             O={output} \
             > {log} \
             2>{log}
+        """
+
+rule indexHQSNPs:
+    conda:
+        os.path.join(workflow.basedir,"envs/envs.yaml")
+    input:
+        os.path.join(config["outdir"],"vcf_filtered",config["project"] + ".removeLowQual" + ".lcm" + ".HQSNPs" + ".vcf.gz")
+    output:
+        os.path.join(config["outdir"],"vcf_final",config["project"] + ".removeLowQual" + ".lcm" + ".HQSNPs" + ".vcf.gz")
+    shell:
+        """
+        mv {input} {output}
+        tabix {output}
         """

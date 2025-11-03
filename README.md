@@ -41,12 +41,13 @@ The following configuration options adjust variant filtering in `rules/4.vcf_fil
 - `f_missing_max`: maximum allowed fraction of missing genotypes (default `0.5`).
 
 ## Usage:
-`snakemake --use-conda --use-singularity --singularity-args '--nv -B .:/dum --no-home -B $HOME:$HOME' --cores [ncpu] --resources gpus=[ngpu] mem_gb=[mem] `
+`snakemake --use-conda --use-singularity --singularity-args '--nv -B .:/dum --no-home -B $HOME:$HOME' --cores [ncpu] --resources gpus=[ngpu] mem_gb=[mem] --rerun-incomplete --retries 3`
 
 ## Notes:
  - `clara-parabricks` now require 38Gb GPU memory for `fq2bam`. Therefore, `--low-memory` option is used in this step.
  - In snakemake command line (see below), `[ncpu]` should be larger than 20 as all resource usages are already hardcoded and some of rules uses more than 20 cpus.
  - In snakemake command line (see below), `[mem]` should not be more than 80% of the physical memory.
  - In case `haplotypecaller` throws overflow error, check the bam files for regions with extremely high mapping depth. Mask those repetitive regions.
+ - Due to unknown reason the GPU steps will fail at a rare chances, and therefore the `--retries` option is suggested.
    
 

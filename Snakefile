@@ -19,11 +19,9 @@ include: "rules/4.vcf_filtering.smk"
 
 rule all:
     input:
-        multiqc_report = os.path.join(config["outdir"],"qc","multiqc", config["project"]+"_multiqc_report.html"),
-        bam_report = expand(os.path.join(config["outdir"],"qc","coverage","{sample}_coverage.txt"), sample = sample_sheet.index),
-        vcf_plot = os.path.join(config["outdir"],"qc","bcftools_stats","plot-vcfstats.log"),
-        het = os.path.join(config["outdir"], "qc", "vcftools", config["project"]+".het"),
-        vcf = os.path.join(config["outdir"], "vcf_final", config["project"]+".removeLowQual"+".lcm"+".allSite"+".vcf.gz")
+        allSite_vcf = os.path.join(config["outdir"], "vcf_final", config["project"]+".removeLowQual"+".lcm"+".allSite"+".vcf.gz"),
+        SNPonly_vcf = os.path.join(config["outdir"],"vcf_final",config["project"] + ".removeLowQual" + ".lcm" + ".HQSNPs" + ".vcf.gz"),
+        qc_zip      = os.path.join(config["outdir"],"qc", config["project"] + "_qc_files.zip")
     shell:
         """
         echo "Job done!"
