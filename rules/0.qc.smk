@@ -209,14 +209,14 @@ rule pack_qc_reports:
             rm -rf "{params.zip_dir}"
             mkdir -p "{params.zip_dir}"
             
-            mv {params.fastp_dir} {params.zip_dir}
-            mv {params.fastqc_dir} {params.zip_dir}
-            mv {params.qualimap_dir} {params.zip_dir}
-            mv {params.bamtools_dir} {params.zip_dir}
-            mv {params.coverage_dir} {params.zip_dir}
-            mv {params.bcftools_stats_dir} {params.zip_dir}
-            mv {params.multiqc_dir} {params.zip_dir}
-            mv {input.count_sites} {params.zip_dir}
+            cp -a {params.fastp_dir} {params.zip_dir}
+            cp -a {params.fastqc_dir} {params.zip_dir}
+            cp -a {params.qualimap_dir} {params.zip_dir}
+            cp -a {params.bamtools_dir} {params.zip_dir}
+            cp -a {params.coverage_dir} {params.zip_dir}
+            cp -a {params.bcftools_stats_dir} {params.zip_dir}
+            cp -a {params.multiqc_dir} {params.zip_dir}
+            cp -a {input.count_sites} {params.zip_dir}
 
             cd {params.out_dir}
             zip -r {output} {params.zip_dir_relative}
