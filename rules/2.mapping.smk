@@ -41,6 +41,7 @@ rule bwa_gpu:
         gpus=1
     singularity:
         config["clara-parabricks"]
+    retries: 3
     shell:
         """
             pbrun fq2bam \
