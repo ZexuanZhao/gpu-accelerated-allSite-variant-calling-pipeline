@@ -200,7 +200,8 @@ rule pack_qc_reports:
         multiqc_dir=os.path.join(config["outdir"],"qc","multiqc"),
         zip_dir=os.path.join(config["outdir"],"qc", config["project"] + "_qc_files"),
         out_dir=config["outdir"],
-        zip_dir_relative=os.path.join("qc", config["project"] + "_qc_files")
+        zip_dir_relative=os.path.join("qc", config["project"] + "_qc_files"),
+        output_dir_relative=os.path.join("qc", config["project"] + "_qc_files.zip")
     output:
         os.path.join(config["outdir"],"qc", config["project"] + "_qc_files.zip")
     shell:
@@ -219,5 +220,5 @@ rule pack_qc_reports:
             cp -a {input.count_sites} {params.zip_dir}
 
             cd {params.out_dir}
-            zip -r {output} {params.zip_dir_relative}
+            zip -r {params.output_dir_relative} {params.zip_dir_relative}
         """
