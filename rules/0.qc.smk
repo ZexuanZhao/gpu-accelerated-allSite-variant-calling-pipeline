@@ -198,7 +198,9 @@ rule pack_qc_reports:
         coverage_dir=os.path.join(config["outdir"], "qc", "coverage"),
         bcftools_stats_dir=os.path.join(config["outdir"],"qc", "bcftools_stats"),
         multiqc_dir=os.path.join(config["outdir"],"qc","multiqc"),
-        zip_dir=os.path.join(config["outdir"],"qc", config["project"] + "_qc_files")
+        zip_dir=os.path.join(config["outdir"],"qc", config["project"] + "_qc_files"),
+        out_dir=config["outdir"],
+        zip_dir_relative=os.path.join("qc", config["project"] + "_qc_files")
     output:
         os.path.join(config["outdir"],"qc", config["project"] + "_qc_files.zip")
     shell:
@@ -215,6 +217,7 @@ rule pack_qc_reports:
             mv {params.bcftools_stats_dir} {params.zip_dir}
             mv {params.multiqc_dir} {params.zip_dir}
             mv {input.count_sites} {params.zip_dir}
-            
-            zip -r {output} {params.zip_dir}
+
+            cd {params.out_dir}
+            zip -r {output} {params.zip_dir_relative}
         """
