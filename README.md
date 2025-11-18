@@ -27,7 +27,7 @@ This repository contains a Snakemake workflow that calls both variant and non-va
    - `reference`:  path to the reference fasta file
    - `sample_sheet`: path to the sample sheet prepared above
    - `outdir`: path to the output directory
-   - `clara-parabricks`: path to the [clara-parabricks](https://docs.nvidia.com/clara/parabricks/latest/index.html) image, e.g. "docker://nvcr.io/nvidia/clara/clara-parabricks:4.4.0-1"
+   - `clara-parabricks`: path to the [clara-parabricks](https://docs.nvidia.com/clara/parabricks/latest/index.html) image, e.g. "docker://nvcr.io/nvidia/clara/clara-parabricks:4.6.0-1"
    - `w_size`: non-overlapping window size for reporting sequencing depths across the genome
    - `split_n`: number of independent jobs of `gatk` for parallelism
    - `memory_gb_per_interval`: memory in Gb for each independent `gatk` job
