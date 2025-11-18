@@ -122,7 +122,7 @@ rule GenomicsDBImport:
         IID = "{IID}",
         batch_size = min(50, len(sample_sheet))
     threads:
-        10
+        2
     resources:
         mem_gb = config["memory_gb_per_interval"]
     log:
