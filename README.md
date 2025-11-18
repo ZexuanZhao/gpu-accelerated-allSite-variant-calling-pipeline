@@ -1,7 +1,7 @@
-# *ALLSITE* Variant Calling from Illumina Reads using GPU
+# *ALLSITE* Variant Calling from Illumina Reads using GPU (Now compatible with mixing polyploid samples with hap/diploid samples)
 
 ## Overview
-This repository contains a GPU-accelerated Snakemake workflow that calls both variant and non-variant sites from multi-sample Illumina reads using the GATK4 GPU implementation in NVIDIA's Clara Parabricks container. The pipeline is compatible with downstream tools such as [`pixy`](https://pixy.readthedocs.io/en/latest/). Users provide a sample sheet and modify the configuration YAML file. Snakemake and Singularity must be installed to initiate the pipeline, ideally by `conda`/`mamba`.
+This repository contains a Snakemake workflow that calls both variant and non-variant sites from Illumina reads using the GATK4 GPU implementation in NVIDIA's Clara Parabricks container as well as regular GATK4 for polyploid samples. The pipeline is compatible with downstream tools such as [`pixy`](https://pixy.readthedocs.io/en/latest/). Users provide a sample sheet and modify the configuration YAML file. Snakemake and Singularity must be installed to initiate the pipeline, ideally by `conda`/`mamba`.
 
 ## Structure and Key Components
 - **Snakefile** – Imports the configuration and sample sheet, pulls in rule modules, and defines the final `all` target for QC reports and filtered VCFs.
@@ -12,7 +12,7 @@ This repository contains a GPU-accelerated Snakemake workflow that calls both va
   - **2.mapping.smk** – Copies and indexes the reference, then maps reads using Clara Parabricks’ GPU-accelerated `pbrun fq2bam` command, embedding read-group information and writing BAM files.
   - **3.variant_calling.smk** – Runs GPU-enabled `pbrun haplotypecaller` per sample, splits the reference into N intervals, builds a GenomicsDB, genotypes all sites in parallel, and merges the interval VCFs.
   - **4.vcf_filtering.smk** – Filters out low-quality and low-complexity regions, derives reference calls and high-quality SNPs, then merges them into an all-site VCF ready for downstream analyses.
-- **scripts/** – Includes a helper script to split a FASTA reference into evenly sized BED intervals, facilitating parallel joint genotyping.
+- **scripts/** – Includes a helper script to split a FASTA reference into evenly sized BED intervals, facilitating parallel joint genotyping, and a QC script to count the number of reference calls, heterozygous calls and missing calls.
 - **test_data/** – Provides example FASTQ files, a sample sheet, and a small reference for demonstration.
 
 ## Getting Started
@@ -21,7 +21,7 @@ This repository contains a GPU-accelerated Snakemake workflow that calls both va
 
 ## Files to prepare:
  - A sample sheet - sample_sheet.csv: a comma delimited file with 3 columns (no column name):
-   - `sample`, `path_to_read1`, `path_to_read2`
+   - `sample`, `ploidy`, `path_to_read1`, `path_to_read2`
  - Modify configuration file - `configuration/config.yaml`:
    - `project`: a name for your project
    - `reference`:  path to the reference fasta file
@@ -54,5 +54,6 @@ The following configuration options adjust variant filtering in `rules/4.vcf_fil
  - In snakemake command line (see below), `[mem]` should not be more than 80% of the physical memory.
  - In case `haplotypecaller` throws overflow error, check the bam files for regions with extremely high mapping depth. Mask those repetitive regions.
  - Due to unknown reason the GPU steps will fail at a rare chances, and therefore the `--retries` option is suggested.
+ - Until Nov 17 2025, `haplotypecaller` implemented in NVIDIA's Clara Parabricks does not support polyploid samples, and therefore regular GATK4 installed from conda is used for polyploid samples. 
    
 
