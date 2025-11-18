@@ -20,7 +20,7 @@ This repository contains a Snakemake workflow that calls both variant and non-va
 2. Ensure Snakemake and Singularity are installed (ideally by conda), then run the command shown in the [Usage](#usage) section with appropriate `--cores`, `--resources`, and memory limits.
 
 ## Files to prepare:
- - A sample sheet - sample_sheet.csv: a comma delimited file with 3 columns (no column name):
+ - A sample sheet - sample_sheet.csv: a comma delimited file with 4 columns (no column name):
    - `sample`, `ploidy`, `path_to_read1`, `path_to_read2`
  - Modify configuration file - `configuration/config.yaml`:
    - `project`: a name for your project
