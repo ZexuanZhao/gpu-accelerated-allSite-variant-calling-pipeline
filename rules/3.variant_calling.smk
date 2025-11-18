@@ -1,15 +1,20 @@
+# ---------------------------------------------------------------------
+# GPU path: Clara Parabricks (ploidy <= 2)
+# ---------------------------------------------------------------------
 rule haplotypeCallerGPU:
     input:
-        ref = os.path.join(config["outdir"],"ref","ref.fasta"),
-        bam=os.path.join(config["outdir"],"bam","{sample}.bam")
+        ref = os.path.join(config["outdir"], "ref", "ref.fasta"),
+        bam = os.path.join(config["outdir"], "bam", "{sample}.bam")
     output:
-        gvcf = os.path.join(config["outdir"],"vcf","{sample}.g.vcf.gz")
+        gvcf = os.path.join(config["outdir"], "vcf", "gpu", "{sample}.g.vcf.gz")
+    params:
+        ploidy = get_ploidy
     log:
-        os.path.join(config["outdir"],"logs","haplotypeCallerGPU","{sample}.log")
+        os.path.join(config["outdir"], "logs", "haplotypeCallerGPU", "{sample}.log")
     threads:
         20
     resources:
-        gpus=1
+        gpus = 1
     singularity:
         config["clara-parabricks"]
     shell:
@@ -18,11 +23,56 @@ rule haplotypeCallerGPU:
             --ref {input.ref} \
             --in-bam {input.bam} \
             --out-variants {output.gvcf} \
+            --ploidy {params.ploidy} \
             --gvcf \
             --num-htvc-threads {threads} \
             --htvc-low-memory \
-            > {log} \
-            2> {log}
+            > {log} 2>&1
+        """
+
+# ---------------------------------------------------------------------
+# CPU path: GATK4 HaplotypeCaller (ploidy > 2)
+# ---------------------------------------------------------------------
+rule haplotypeCallerCPU:
+    input:
+        ref = os.path.join(config["outdir"], "ref", "ref.fasta"),
+        bam = os.path.join(config["outdir"], "bam", "{sample}.bam")
+    output:
+        gvcf = os.path.join(config["outdir"], "vcf", "cpu", "{sample}.g.vcf.gz")
+    params:
+        ploidy = get_ploidy
+    log:
+        os.path.join(config["outdir"], "logs", "haplotypeCallerCPU", "{sample}.log")
+    threads:
+        4
+    resources:
+        gpus = 0
+    conda:
+        os.path.join(workflow.basedir, "envs", "gatk4.yaml")
+    shell:
+        """
+        gatk HaplotypeCaller \
+            -R {input.ref} \
+            -I {input.bam} \
+            -O {output.gvcf} \
+            -ERC GVCF \
+            -ploidy {params.ploidy} \
+            > {log} 2>&1
+        """
+
+# ---------------------------------------------------------------------
+# Unify: expose one GVCF path per sample for downstream joint calling
+# ---------------------------------------------------------------------
+rule gvcf_unify:
+    input:
+        gvcf_backend_path
+    output:
+        gvcf = os.path.join(config["outdir"], "vcf", "{sample}.g.vcf.gz")
+    shell:
+        """
+        target=$(readlink -f {input})
+        ln -sfn "$target" {output.gvcf}
+        ln -sfn "$target".tbi {output.gvcf}.tbi
         """
 
 rule createIntervals:

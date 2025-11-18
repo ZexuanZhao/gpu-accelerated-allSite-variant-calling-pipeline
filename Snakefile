@@ -5,7 +5,7 @@ import pandas as pd
 configfile: "configuration/config.yaml"
 sample_sheet = pd.read_csv(config["sample_sheet"],
     dtype=str,
-    names = ["sample", "r1", "r2"]).set_index("sample")
+    names = ["sample","ploidy", "r1", "r2"]).set_index("sample")
 
 wildcard_constraints:
     sample = "|".join(sample_sheet.index)

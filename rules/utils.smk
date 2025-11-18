@@ -10,6 +10,20 @@ def get_fastq2_basename(wildcards):
     return {"r1_name": wildcards.sample + ".1P.fastq.gz",
             "r2_name": wildcards.sample + ".2P.fastq.gz"}
 
+def get_ploidy(wildcards):
+    return int(sample_sheet.loc[wildcards.sample, ["ploidy"]].dropna().ploidy)
+
+def gvcf_backend_path(wildcards):
+    """Backend-specific GVCF path depending on ploidy."""
+    ploidy = get_ploidy(wildcards)
+    backend = "gpu" if ploidy <= 2 else "cpu"
+    return os.path.join(
+        config["outdir"],
+        "vcf",
+        backend,
+        f"{wildcards.sample}.g.vcf.gz"
+    )
+
 def format_input_vcfs(input_vcfs):
     formatted_vcfs = []
     for i, vcf_path in enumerate(input_vcfs):
