@@ -88,7 +88,8 @@ Across species (`<outdir>/`): `multiqc/all_species_multiqc_report.html`;
 ## Environments
 Runner: the existing kremer env `snakemake_singularity` (`environment.yaml` records it:
 snakemake 8.29.3, singularity 3.8.6). Rule envs, with pinned main tools: `envs/tools.yaml`
-(bcftools/samtools/htslib 1.25, bedtools 2.31.1, bwa 0.7.19, fastp 1.4.0, mosdepth 0.3.14),
+(bcftools/samtools/htslib 1.25, bedtools 2.31.1, bwa 0.7.19, fastp 1.4.0), `envs/mosdepth.yaml`
+(mosdepth 0.3.14; own env because it needs htslib < 1.25),
 `envs/qc.yaml` (FastQC 0.13.0, MultiQC 1.35), `envs/gatk4.yaml` (GATK 4.6.2.0),
 `envs/blast.yaml` (BLAST+ 2.17.0, dustmasker), `envs/pixy.yaml` (pixy 2.2.4),
 `envs/plink2.yaml` (plink2 2.0.0b1.post4).

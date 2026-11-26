@@ -46,7 +46,7 @@ rule samtools_stats:
 ##   - in w_size windows, for coverage plots.
 rule mosdepth:
     conda:
-        os.path.join(workflow.basedir, "envs/tools.yaml")
+        os.path.join(workflow.basedir, "envs/mosdepth.yaml")
     input:
         bam = P("{species}", "bam", "{sample}.bam"),
         bai = P("{species}", "bam", "{sample}.bam.bai"),
