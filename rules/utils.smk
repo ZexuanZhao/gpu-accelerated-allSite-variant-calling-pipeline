@@ -158,6 +158,14 @@ def interval_ids():
     return range(1, config["split_n"] + 1)
 
 
+def pbrun_tmp(wildcards, step):
+    """--tmp-dir argument for pbrun (one subdirectory per job), or "" when pbrun_tmp_dir is unset."""
+    root = config.get("pbrun_tmp_dir", "") or ""
+    if not root:
+        return ""
+    return f"--tmp-dir {os.path.join(root, f'{wildcards.species}.{wildcards.sample}.{step}')}"
+
+
 def get_total_memory_gb():
     import psutil
     return psutil.virtual_memory().total / (1024 ** 3)

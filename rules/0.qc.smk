@@ -42,6 +42,8 @@ rule Qualimap:
         outdir = lambda wc: P(wc.species, "qc", "qualimap", wc.sample)
     threads:
         10
+    resources:
+        mem_gb = 52
     log:
         P("{species}", "logs", "Qualimap", "{sample}.log")
     shell:

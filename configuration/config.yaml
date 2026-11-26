@@ -20,6 +20,9 @@ species:
 
 ## Clara Parabricks image (fq2bam, haplotypecaller for ploidy <= 2)
 clara-parabricks: "docker://nvcr.io/nvidia/clara/clara-parabricks:4.6.0-1"
+## Temporary directory for pbrun (put it on a fast local SSD, e.g. /var/tmp/<run>); one
+## subdirectory per job, removed when empty. "" = pbrun's default (the working directory).
+pbrun_tmp_dir: ""
 
 ## Read sets of one sample: fail when two read pairs share more than this fraction of read IDs
 ## among the first unit_check_reads reads (the same reads delivered twice, e.g. re-demultiplexed)

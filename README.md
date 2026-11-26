@@ -100,6 +100,8 @@ Test data: `snakemake --configfile configuration/config.yaml ...` from the repos
 
 ## Notes
 - `clara-parabricks` needs 38 GB GPU memory for `fq2bam`, so `--low-memory` is used.
+- Set `pbrun_tmp_dir` to a local SSD: pbrun writes large sort temp files there (default: the
+  working directory). Qualimap jobs declare `mem_gb=52`; pass `--resources mem_gb=<N>` to cap them.
 - `[ncpu]` should be larger than 20 (the GPU rules use 20 threads); `[mem]` at most 80% of
   physical memory.
 - If `haplotypecaller` throws an overflow error, check the BAMs for regions with extremely

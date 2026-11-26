@@ -38,7 +38,8 @@ rule bwa_gpu:
         bai = P("{species}", "bam", "{sample}.bam.bai"),
         dup_metrics = P("{species}", "qc", "dup_metrics", "{sample}.dup_metrics.txt")
     params:
-        in_fq = fq2bam_in_fq
+        in_fq = fq2bam_in_fq,
+        tmp = lambda wc: pbrun_tmp(wc, "fq2bam")
     log:
         P("{species}", "logs", "mapping", "{sample}.log")
     threads:
@@ -50,13 +51,17 @@ rule bwa_gpu:
     retries: 3
     shell:
         """
+        tmp_arg="{params.tmp}"
+        [ -n "$tmp_arg" ] && mkdir -p "${{tmp_arg#--tmp-dir }}"
         pbrun fq2bam \
             --low-memory \
+            $tmp_arg \
             --ref {input.ref} \
             {params.in_fq} \
             --out-bam {output.bam} \
             --out-duplicate-metrics {output.dup_metrics} \
             > {log} 2>&1
+        [ -n "$tmp_arg" ] && rmdir "${{tmp_arg#--tmp-dir }}" 2>/dev/null || true
         """
 
 ## ---------------------------------------------------------------------

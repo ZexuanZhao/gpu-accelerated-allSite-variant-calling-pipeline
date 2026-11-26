@@ -9,7 +9,8 @@ rule haplotypeCallerGPU:
     output:
         gvcf = P("{species}", "vcf", "gpu", "{sample}.g.vcf.gz")
     params:
-        ploidy = get_ploidy
+        ploidy = get_ploidy,
+        tmp = lambda wc: pbrun_tmp(wc, "htvc")
     log:
         P("{species}", "logs", "haplotypeCallerGPU", "{sample}.log")
     threads:
@@ -20,7 +21,10 @@ rule haplotypeCallerGPU:
         config["clara-parabricks"]
     shell:
         """
+        tmp_arg="{params.tmp}"
+        [ -n "$tmp_arg" ] && mkdir -p "${{tmp_arg#--tmp-dir }}"
         pbrun haplotypecaller \
+            $tmp_arg \
             --ref {input.ref} \
             --in-bam {input.bam} \
             --out-variants {output.gvcf} \
@@ -29,6 +33,7 @@ rule haplotypeCallerGPU:
             --num-htvc-threads {threads} \
             --htvc-low-memory \
             > {log} 2>&1
+        [ -n "$tmp_arg" ] && rmdir "${{tmp_arg#--tmp-dir }}" 2>/dev/null || true
         """
 
 # ---------------------------------------------------------------------
