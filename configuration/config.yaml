@@ -1,24 +1,78 @@
-## A project name for naming summary files
-project: "test"
+## Example configuration (runs on test_data/). Pass it with --configfile; the Snakefile does
+## not load any config on its own, so a project config never merges with this one.
 
-## Input files
-reference: "test_data/test_mutated.fasta"
+## Sample sheet: CSV with a header, one row per read pair (see README).
 sample_sheet: "test_data/sample_sheet.csv"
+
+## Output root: each species writes to <outdir>/<species_id>/
 outdir: "test_variant_calling"
 
-## Docker image path
+## Species table. Keys are species ids used in the sample sheet.
+##   reference:   FASTA of the assembly to call against
+##   enabled:     false keeps the species out of the run (its rows in the sample sheet are ignored)
+##   regions_bed: optional BED (chrom, start, end, label; 0-based) of regions for pixy and for
+##                per-region callable bp and heterozygosity in the QC tables; "" for none
+species:
+  test:
+    reference: "test_data/test_mutated.fasta"
+    enabled: true
+    regions_bed: ""
+
+## Clara Parabricks image (fq2bam, haplotypecaller for ploidy <= 2)
 clara-parabricks: "docker://nvcr.io/nvidia/clara/clara-parabricks:4.6.0-1"
 
-## Some parameters
-### window size for calculating coverage
-w_size: 100000
-### number of intervals to call variants independently as gatk don't do parallelism by default
+## Read sets of one sample: fail when two read pairs share more than this fraction of read IDs
+## among the first unit_check_reads reads (the same reads delivered twice, e.g. re-demultiplexed)
+unit_check_reads: 200000
+unit_check_max_shared: 0.01
+
+## Joint genotyping: number of intervals genotyped (and filtered) in parallel, Java heap per job
 split_n: 100
-### memory limit for EACH interval (Gb)
 memory_gb_per_interval: 1
 
-## Filtering parameters
-gq_min: 20
-qual_min: 30
-dp_max: 50
+## Depth: windows for the coverage QC, mapping quality for depth counts (duplicates, secondary,
+## QC-fail and unmapped reads are never counted)
+w_size: 100000
+depth_mapq: 20
+
+## Per-sample genotype depth window, m = the sample's median depth (mosdepth, outside N gaps and
+## low-complexity regions):
+##   min_dp = max(min_abs, ceil(min_frac * m)),  max_dp = floor(max_frac * m)
+## min_dp / max_dp columns in the sample sheet override these for that sample.
+## Samples with m below low_median_flag are flagged in the QC table (not removed).
+depth:
+  min_abs: 8
+  min_frac: 0.5
+  max_frac: 2.0
+  low_median_flag: 10
+
+## Site filters for biallelic SNPs (GATK hard-filter conventions: a missing annotation passes)
+site_filters:
+  qual_min: 30
+  qd_min: 2.0
+  fs_max: 60.0
+  sor_max: 3.0
+  mq_min: 50.0
+  mqranksum_min: -12.5
+  readposranksum_min: -8.0
+  excesshet_max: 54.69
+  ## a SNP is dropped when more than this fraction of called genotypes is heterozygous
+  het_fraction_max: 0.5
+  ## SNPs within this many bp of an indel are dropped (0 = off)
+  indel_gap: 3
+
+## Genotype filters (failing genotypes are set to missing)
+genotype_filters:
+  gq_min: 20      # variant sites (GQ)
+  rgq_min: 20     # reference calls at invariant sites (RGQ, GQ if RGQ is absent)
+  het_alt_min: 3  # heterozygous calls: minimum ALT reads
+  het_ab_min: 0.2 # heterozygous calls: ALT / (REF + ALT) range
+  het_ab_max: 0.8
+
+## Sites (SNP or invariant) with a larger fraction of missing genotypes after masking are dropped
 f_missing_max: 0.5
+
+## pixy (pi only): window sizes in bp; regions_bed of a species adds one run over its regions
+pixy:
+  window_sizes: [10000, 100000]
+  threads: 8

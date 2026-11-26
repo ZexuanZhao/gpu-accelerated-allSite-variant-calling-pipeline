@@ -1,3 +1,4 @@
-test1,2,test_data/test1_R1.fastq.gz,test_data/test1_R2.fastq.gz
-test2,3,test_data/test2_R1.fastq.gz,test_data/test2_R2.fastq.gz
-test3,3,test_data/test3_R1.fastq.gz,test_data/test3_R2.fastq.gz
+species_id,sample,ploidy,r1,r2,min_dp,max_dp
+test,test1,2,test_data/test1_R1.fastq.gz,test_data/test1_R2.fastq.gz,,
+test,test2,3,test_data/test2_R1.fastq.gz,test_data/test2_R2.fastq.gz,,
+test,test3,3,test_data/test3_R1.fastq.gz,test_data/test3_R2.fastq.gz,,

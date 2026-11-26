@@ -1,14 +1,9 @@
 #!/usr/bin/env python
-import os.path
-import pandas as pd
+## All-site variant calling for several species in one run.
+## Usage: snakemake --configfile <config.yaml> ... (see README)
 
-configfile: "configuration/config.yaml"
-sample_sheet = pd.read_csv(config["sample_sheet"],
-    dtype=str,
-    names = ["sample","ploidy", "r1", "r2"]).set_index("sample")
-
-wildcard_constraints:
-    sample = "|".join(sample_sheet.index)
+if not config:
+    raise ValueError("No configuration: run with --configfile <config.yaml> (see README).")
 
 include: "rules/utils.smk"
 include: "rules/0.qc.smk"
@@ -16,12 +11,11 @@ include: "rules/1.preprocessing.smk"
 include: "rules/2.mapping.smk"
 include: "rules/3.variant_calling.smk"
 include: "rules/4.vcf_filtering.smk"
+include: "rules/5.diversity.smk"
 
 rule all:
     input:
-        allSite_vcf = os.path.join(config["outdir"], "vcf_final", config["project"]+".removeLowQual"+".lcm"+".allSite"+".vcf.gz"),
-        SNPonly_vcf = os.path.join(config["outdir"],"vcf_final",config["project"] + ".removeLowQual" + ".lcm" + ".HQSNPs" + ".vcf.gz"),
-        qc_zip      = os.path.join(config["outdir"],"qc", config["project"] + "_qc_files.zip")
+        all_targets()
     shell:
         """
         echo "Job done!"

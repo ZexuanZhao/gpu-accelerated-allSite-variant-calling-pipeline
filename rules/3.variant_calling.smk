@@ -3,19 +3,20 @@
 # ---------------------------------------------------------------------
 rule haplotypeCallerGPU:
     input:
-        ref = os.path.join(config["outdir"], "ref", "ref.fasta"),
-        bam = os.path.join(config["outdir"], "bam", "{sample}.bam")
+        ref = P("{species}", "ref", "ref.fasta"),
+        bam = P("{species}", "bam", "{sample}.bam"),
+        bai = P("{species}", "bam", "{sample}.bam.bai")
     output:
-        gvcf = os.path.join(config["outdir"], "vcf", "gpu", "{sample}.g.vcf.gz")
+        gvcf = P("{species}", "vcf", "gpu", "{sample}.g.vcf.gz")
     params:
         ploidy = get_ploidy
     log:
-        os.path.join(config["outdir"], "logs", "haplotypeCallerGPU", "{sample}.log")
+        P("{species}", "logs", "haplotypeCallerGPU", "{sample}.log")
     threads:
         20
     resources:
         gpus = 1
-    singularity:
+    container:
         config["clara-parabricks"]
     shell:
         """
@@ -35,18 +36,18 @@ rule haplotypeCallerGPU:
 # ---------------------------------------------------------------------
 rule haplotypeCallerCPU:
     input:
-        ref = os.path.join(config["outdir"], "ref", "ref.fasta"),
-        bam = os.path.join(config["outdir"], "bam", "{sample}.bam")
+        ref = P("{species}", "ref", "ref.fasta"),
+        dict = P("{species}", "ref", "ref.dict"),
+        bam = P("{species}", "bam", "{sample}.bam"),
+        bai = P("{species}", "bam", "{sample}.bam.bai")
     output:
-        gvcf = os.path.join(config["outdir"], "vcf", "cpu", "{sample}.g.vcf.gz")
+        gvcf = P("{species}", "vcf", "cpu", "{sample}.g.vcf.gz")
     params:
         ploidy = get_ploidy
     log:
-        os.path.join(config["outdir"], "logs", "haplotypeCallerCPU", "{sample}.log")
+        P("{species}", "logs", "haplotypeCallerCPU", "{sample}.log")
     threads:
         4
-    resources:
-        gpus = 0
     conda:
         os.path.join(workflow.basedir, "envs", "gatk4.yaml")
     shell:
@@ -61,13 +62,13 @@ rule haplotypeCallerCPU:
         """
 
 # ---------------------------------------------------------------------
-# Unify: expose one GVCF path per sample for downstream joint calling
+# Unify: one GVCF path per sample for joint genotyping
 # ---------------------------------------------------------------------
 rule gvcf_unify:
     input:
         gvcf_backend_path
     output:
-        gvcf = os.path.join(config["outdir"], "vcf", "{sample}.g.vcf.gz")
+        gvcf = P("{species}", "vcf", "{sample}.g.vcf.gz")
     shell:
         """
         target=$(readlink -f {input})
@@ -77,103 +78,90 @@ rule gvcf_unify:
 
 rule createIntervals:
     conda:
-        os.path.join(workflow.basedir,"envs/envs.yaml")
+        os.path.join(workflow.basedir, "envs/tools.yaml")
     input:
-        os.path.join(config["outdir"],"ref","ref.fasta")
+        P("{species}", "ref", "ref.fasta")
     output:
-        expand(os.path.join(config["outdir"],"ref","ref.splitted.{IID}.bed"), IID = range(1, config["split_n"]+1))
+        expand(P("{{species}}", "ref", "intervals", "ref.splitted.{IID}.bed"), IID=interval_ids())
     params:
-        out_dir = os.path.join(config["outdir"], "ref"),
-        split_n = config["split_n"]
-    threads:
-        1
+        out_dir = lambda wc: P(wc.species, "ref", "intervals"),
+        split_n = config["split_n"],
+        script = script("split_fasta_into_n_bed.py")
     shell:
         """
-        python scripts/split_fasta_into_n_bed.py {input} {params.split_n} --out_dir {params.out_dir} --prefix ref
+        python {params.script} {input} {params.split_n} --out_dir {params.out_dir} --prefix ref
         """
 
 rule sampleNameMap:
     input:
-        gvcf = expand(os.path.join(config["outdir"],"vcf","{sample}.g.vcf.gz"), sample = sample_sheet.index)
+        gvcf = lambda wc: expand(P(wc.species, "vcf", "{sample}.g.vcf.gz"), sample=samples_of(wc.species))
     output:
-        map = os.path.join(config["outdir"],"vcf", config["project"] + ".map.tsv")
-    params:
-        outdir = config["outdir"],
-        sample = sample_sheet.index
-    threads:
-        1
+        map = P("{species}", "vcf", "{species}.map.tsv")
     run:
-        data = []
-        for sample in params.sample:
-            gvcf_file = os.path.join(config["outdir"],"vcf",f"{sample}.g.vcf.gz")
-            data.append({"sample": sample, "sample_vcf": gvcf_file})
-        df = pd.DataFrame(data)
-        df.to_csv(output.map,sep="\t", index=False, header=False)
+        with open(output.map, "w") as fh:
+            for sample, gvcf in zip(samples_of(wildcards.species), input.gvcf):
+                fh.write(f"{sample}\t{gvcf}\n")
 
 rule GenomicsDBImport:
     conda:
-        os.path.join(workflow.basedir,"envs/gatk4.yaml")
+        os.path.join(workflow.basedir, "envs/gatk4.yaml")
     input:
-        interval = os.path.join(config["outdir"],"ref","ref.splitted.{IID}.bed"),
-        map= os.path.join(config["outdir"],"vcf",config["project"] + ".map.tsv")
+        interval = P("{species}", "ref", "intervals", "ref.splitted.{IID}.bed"),
+        map = P("{species}", "vcf", "{species}.map.tsv")
     output:
-        directory(os.path.join(config["outdir"],"gdb",config["project"]+".gdb.{IID}"))
+        directory(P("{species}", "gdb", "interval_{IID}.gdb"))
     params:
-        IID = "{IID}",
-        batch_size = min(50, len(sample_sheet))
+        batch_size = lambda wc: min(50, len(samples_of(wc.species)))
     threads:
         2
     resources:
         mem_gb = config["memory_gb_per_interval"]
     log:
-        os.path.join(config["outdir"],"logs","GenomicsDBImport","{IID}.log")
+        P("{species}", "logs", "GenomicsDBImport", "{IID}.log")
     shell:
         """
         gatk \
             --java-options "-Xmx{resources.mem_gb}g" \
-                GenomicsDBImport \
-                    --genomicsdb-workspace-path {output} \
-                    --batch-size {params.batch_size} \
-                      -L {input.interval} \
-                      --sample-name-map {input.map} \
-                      --reader-threads {threads} \
-            > {log} \
-            2>{log}
+            GenomicsDBImport \
+                --genomicsdb-workspace-path {output} \
+                --batch-size {params.batch_size} \
+                -L {input.interval} \
+                --sample-name-map {input.map} \
+                --reader-threads {threads} \
+            > {log} 2>&1
         """
+
 rule CreateSequenceDictionary:
     conda:
-        os.path.join(workflow.basedir,"envs/gatk4.yaml")
+        os.path.join(workflow.basedir, "envs/gatk4.yaml")
     input:
-        os.path.join(config["outdir"],"ref","ref.fasta")
+        P("{species}", "ref", "ref.fasta")
     output:
-        os.path.join(config["outdir"],"ref","ref.dict")
-    threads:
-        1
+        P("{species}", "ref", "ref.dict")
     log:
-        os.path.join(config["outdir"],"logs","CreateSequenceDictionary","CreateSequenceDictionary.log")
+        P("{species}", "logs", "CreateSequenceDictionary", "CreateSequenceDictionary.log")
     shell:
         """
-        gatk CreateSequenceDictionary \
-            R={input} \
-            O={output} \
-             >{log} 2>{log}
+        gatk CreateSequenceDictionary R={input} O={output} > {log} 2>&1
         """
+
+## Raw all-sites VCF per interval. These are kept (not temporary), so the filters can be
+## changed and re-run without genotyping again.
 rule GenotypeGVCFs:
     conda:
-        os.path.join(workflow.basedir,"envs/gatk4.yaml")
+        os.path.join(workflow.basedir, "envs/gatk4.yaml")
     input:
-        ref = os.path.join(config["outdir"],"ref","ref.fasta"),
-        dict =  os.path.join(config["outdir"],"ref","ref.dict"),
-        interval = os.path.join(config["outdir"],"ref","ref.splitted.{IID}.bed"),
-        gdb = os.path.join(config["outdir"],"gdb",config["project"] + ".gdb.{IID}")
+        ref = P("{species}", "ref", "ref.fasta"),
+        dict = P("{species}", "ref", "ref.dict"),
+        interval = P("{species}", "ref", "intervals", "ref.splitted.{IID}.bed"),
+        gdb = P("{species}", "gdb", "interval_{IID}.gdb")
     output:
-        os.path.join(config["outdir"],"vcf",config["project"]+".{IID}"+".vcf.gz")
-    params:
-        IID = "{IID}"
+        vcf = P("{species}", "vcf", "raw", "interval_{IID}.vcf.gz"),
+        tbi = P("{species}", "vcf", "raw", "interval_{IID}.vcf.gz.tbi")
     log:
-        os.path.join(config["outdir"],"logs","GenotypeGVCFs","{IID}.log")
+        P("{species}", "logs", "GenotypeGVCFs", "{IID}.log")
     resources:
-        mem_gb=config["memory_gb_per_interval"]
+        mem_gb = config["memory_gb_per_interval"]
     threads:
         2
     shell:
@@ -185,33 +173,7 @@ rule GenotypeGVCFs:
             -V gendb://{input.gdb} \
             -all-sites \
             -L {input.interval} \
-            -O {output} \
-            > {log} \
-            2>{log}
-        """
-
-rule mergeVcfs:
-    conda:
-        os.path.join(workflow.basedir,"envs/gatk4.yaml")
-    input:
-        expand(os.path.join(config["outdir"],"vcf",config["project"]+".{IID}"+".vcf.gz"), IID = range(1, config["split_n"]+1))
-    output:
-        os.path.join(config["outdir"],"vcf",config["project"]+".raw"+".vcf.gz")
-    params:
-        input_formatted = format_input_vcfs(expand(os.path.join(config["outdir"],"vcf",config["project"]+".{IID}"+".vcf.gz"), IID = range(1, config["split_n"]+1)))
-    threads:
-        10
-    log:
-        os.path.join(config["outdir"],"logs","mergeVcfs","mergeVcfs.log")
-    resources:
-        mem_gb = int(round(get_total_memory_gb() * 0.8, 0))
-    shell:
-        """
-        gatk \
-            --java-options "-Xmx{resources.mem_gb}g" \
-            MergeVcfs \
-            {params.input_formatted} \
-            O={output} \
-            > {log} \
-            2>{log}
+            --only-output-calls-starting-in-intervals \
+            -O {output.vcf} \
+            > {log} 2>&1
         """

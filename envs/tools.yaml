@@ -1,0 +1,13 @@
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python =3.12
+  - bcftools =1.25
+  - samtools =1.25
+  - htslib =1.25
+  - bedtools =2.31.1
+  - bwa =0.7.19
+  - fastp =1.4.0
+  - mosdepth =0.3.14
+  - psutil
