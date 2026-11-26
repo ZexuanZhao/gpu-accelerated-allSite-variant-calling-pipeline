@@ -16,7 +16,7 @@ rule fastqc_after_trimming:
         2
     shell:
         """
-        fastqc --quiet --outdir {params.outdir} --noextract -f fastq {input} -t {threads}
+        fastqc --quiet --outdir {params.outdir} -f fastq {input} -t {threads}
         """
 
 ## Alignment statistics (MultiQC reads both): mapped and properly paired reads, insert
