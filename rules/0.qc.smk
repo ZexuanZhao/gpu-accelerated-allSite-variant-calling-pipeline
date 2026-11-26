@@ -19,42 +19,24 @@ rule fastqc_after_trimming:
         fastqc --quiet --outdir {params.outdir} --noextract -f fastq {input} -t {threads}
         """
 
-rule bamstats:
+## Alignment statistics (MultiQC reads both): mapped and properly paired reads, insert
+## size, error rate (from NM), duplicates, MAPQ
+rule samtools_stats:
     conda:
-        os.path.join(workflow.basedir, "envs/qc.yaml")
+        os.path.join(workflow.basedir, "envs/tools.yaml")
     input:
-        P("{species}", "bam", "{sample}.bam")
+        bam = P("{species}", "bam", "{sample}.bam"),
+        bai = P("{species}", "bam", "{sample}.bam.bai"),
+        ref = P("{species}", "ref", "ref.fasta")
     output:
-        P("{species}", "qc", "bamtools", "{sample}_bamtools.stats")
-    shell:
-        """
-        bamtools stats -in {input} | grep -v "*" > {output}
-        """
-
-rule Qualimap:
-    conda:
-        os.path.join(workflow.basedir, "envs/qc.yaml")
-    input:
-        bam = P("{species}", "bam", "{sample}.bam")
-    output:
-        P("{species}", "qc", "qualimap", "{sample}", "qualimapReport.html")
-    params:
-        outdir = lambda wc: P(wc.species, "qc", "qualimap", wc.sample)
+        stats = P("{species}", "qc", "samtools", "{sample}.stats"),
+        flagstat = P("{species}", "qc", "samtools", "{sample}.flagstat")
     threads:
-        10
-    resources:
-        mem_gb = 52
-    log:
-        P("{species}", "logs", "Qualimap", "{sample}.log")
+        4
     shell:
         """
-        qualimap bamqc \
-            -bam {input.bam} \
-            -outdir {params.outdir} \
-            -outformat HTML \
-            -nt {threads} \
-            --java-mem-size=50G \
-            > {log} 2>&1
+        samtools stats -@ {threads} --reference {input.ref} {input.bam} > {output.stats}
+        samtools flagstat -@ {threads} {input.bam} > {output.flagstat}
         """
 
 ## Depth with mosdepth (duplicate, secondary, QC-fail and unmapped reads excluded by its
@@ -222,37 +204,4 @@ rule sample_qc:
             --hqsnps {input.hqsnps} \
             --ab-out {output.ab} \
             > {output.qc}
-        """
-
-rule multiqc:
-    conda:
-        os.path.join(workflow.basedir, "envs/qc.yaml")
-    input:
-        fastp = lambda wc: [P(wc.species, "qc", "fastp", f"{sm}.u{u}.fastp.json")
-                            for sm in samples_of(wc.species)
-                            for u in range(1, len(SHEET[wc.species][sm]["units"]) + 1)],
-        fastqc = lambda wc: [P(wc.species, "qc", "fastqc", f"{sm}.u{u}.{r}_fastqc.zip")
-                             for sm in samples_of(wc.species)
-                             for u in range(1, len(SHEET[wc.species][sm]["units"]) + 1)
-                             for r in ("1P", "2P")],
-        qualimap = lambda wc: expand(P(wc.species, "qc", "qualimap", "{sample}", "qualimapReport.html"),
-                                     sample=samples_of(wc.species)),
-        bamtools = lambda wc: expand(P(wc.species, "qc", "bamtools", "{sample}_bamtools.stats"),
-                                     sample=samples_of(wc.species)),
-        mosdepth = lambda wc: expand(P(wc.species, "qc", "mosdepth", "{sample}.mosdepth.summary.txt"),
-                                     sample=samples_of(wc.species)),
-        dup = lambda wc: expand(P(wc.species, "qc", "dup_metrics", "{sample}.dup_metrics.txt"),
-                                sample=samples_of(wc.species)),
-        bcftools = P("{species}", "qc", "bcftools_stats", "{species}.HQSNPs.vcf.stats")
-    output:
-        P("{species}", "qc", "multiqc", "{species}_multiqc_report.html")
-    params:
-        input_dir = lambda wc: P(wc.species, "qc"),
-        output_dir = lambda wc: P(wc.species, "qc", "multiqc"),
-        name = lambda wc: f"{wc.species}_multiqc_report.html"
-    log:
-        P("{species}", "logs", "multiqc", "multiqc.log")
-    shell:
-        """
-        multiqc --force -o {params.output_dir} -n {params.name} {params.input_dir} > {log} 2>&1
         """

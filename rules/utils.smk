@@ -69,6 +69,13 @@ def load_sample_sheet(path):
 
 
 SHEET = load_sample_sheet(config["sample_sheet"])
+_seen = {}
+for _sp, _smp in SHEET.items():
+    for _sm in _smp:
+        if _sm in _seen:
+            raise ValueError(f"Sample name '{_sm}' is used in {_seen[_sm]} and {_sp}; names must be "
+                             f"unique across species (they share one QC report).")
+        _seen[_sm] = _sp
 for _sp in ENABLED_SPECIES:
     if _sp not in SHEET:
         raise ValueError(f"Species '{_sp}' is enabled but has no samples in the sample sheet.")
@@ -181,7 +188,6 @@ def species_targets(sp):
         P(sp, "vcf_final", f"{sp}.callable.bed.gz"),
         P(sp, "qc", f"{sp}.sample_qc.tsv"),
         P(sp, "qc", f"{sp}.filter_stats.tsv"),
-        P(sp, "qc", "multiqc", f"{sp}_multiqc_report.html"),
     ]
     t += [P(sp, "pixy", f"{sp}.w{w}_pi.txt") for w in config["pixy"]["window_sizes"]]
     if regions_bed_of(sp):
@@ -191,4 +197,6 @@ def species_targets(sp):
 
 
 def all_targets():
-    return [t for sp in ENABLED_SPECIES for t in species_targets(sp)]
+    return ([t for sp in ENABLED_SPECIES for t in species_targets(sp)] +
+            [P("qc_summary", "sample_flags_mqc.tsv"),
+             P("multiqc", "all_species_multiqc_report.html")])

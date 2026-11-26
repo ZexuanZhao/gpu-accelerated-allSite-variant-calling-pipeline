@@ -40,10 +40,14 @@ pixy run per species.
    kept, so the filters can be changed and re-run without genotyping again.
 6. **Diversity** (`rules/5.diversity.smk`): `pixy --stats pi` in each window size of
    `pixy.window_sizes`, and over the regions of `regions_bed` when a species has one.
-7. **QC**: fastp, FastQC, bamtools, Qualimap, mosdepth, duplicate metrics, bcftools stats
-   (MultiQC report per species); per-sample table with depth window, called and
-   heterozygous sites (also per region label of `regions_bed`) and the allele balance of
-   heterozygous calls; per-filter counts of dropped sites and masked genotypes.
+7. **QC** (`rules/0.qc.smk`, `rules/6.qc_report.smk`): fastp, FastQC, samtools
+   stats/flagstat, mosdepth, duplicate metrics, bcftools stats; per-sample depth window,
+   called and heterozygous sites (also per region label of `regions_bed`) and allele balance
+   of heterozygous calls; per-filter counts; KING kinship and PCA per species (plink2).
+   `scripts/qc_summary.py` joins them into one table with PASS/WARN flags per sample
+   (low mapping, high mismatch, low depth, heterozygosity too low or too high, AB skew,
+   possible duplicate, PCA outlier; thresholds in `qc_report.flags`), and one MultiQC report
+   covers all species, with sample names `<species>_<sample>`.
 
 ## Files to prepare
 - **Sample sheet** (CSV with a header), one row per read pair; several rows per sample when it
@@ -75,14 +79,19 @@ pixy run per species.
 - `pixy/<species_id>.w<size>_pi.txt`, `pixy/<species_id>.regions_pi.txt`: pi.
 - `qc/<species_id>.sample_qc.tsv`, `qc/<species_id>.ab_hist.tsv`,
   `qc/<species_id>.depth_thresholds.tsv`, `qc/<species_id>.filter_stats.tsv`,
-  `qc/<species_id>.callable_by_region.tsv`, `qc/multiqc/<species_id>_multiqc_report.html`.
+  `qc/<species_id>.callable_by_region.tsv`, `qc/plink/<species_id>.{kin0,eigenvec,eigenval}`.
+
+Across species (`<outdir>/`): `multiqc/all_species_multiqc_report.html`;
+`qc_summary/sample_flags_mqc.tsv` (the flag table), `kinship_mqc.tsv`, `pca_mqc.tsv`,
+`filter_stats_mqc.tsv`, `pi_mqc.tsv`.
 
 ## Environments
 Runner: the existing kremer env `snakemake_singularity` (`environment.yaml` records it:
 snakemake 8.29.3, singularity 3.8.6). Rule envs, with pinned main tools: `envs/tools.yaml`
 (bcftools/samtools/htslib 1.25, bedtools 2.31.1, bwa 0.7.19, fastp 1.4.0, mosdepth 0.3.14),
-`envs/qc.yaml` (FastQC 0.13.0, Qualimap 2.3, bamtools 2.5.3, MultiQC 1.35), `envs/gatk4.yaml`
-(GATK 4.6.2.0), `envs/blast.yaml` (BLAST+ 2.17.0, dustmasker), `envs/pixy.yaml` (pixy 2.2.4).
+`envs/qc.yaml` (FastQC 0.13.0, MultiQC 1.35), `envs/gatk4.yaml` (GATK 4.6.2.0),
+`envs/blast.yaml` (BLAST+ 2.17.0, dustmasker), `envs/pixy.yaml` (pixy 2.2.4),
+`envs/plink2.yaml` (plink2 2.0.0b1.post4).
 Parabricks: `clara-parabricks` in the config (4.6.0-1).
 
 ## Usage
@@ -101,7 +110,7 @@ Test data: `snakemake --configfile configuration/config.yaml ...` from the repos
 ## Notes
 - `clara-parabricks` needs 38 GB GPU memory for `fq2bam`, so `--low-memory` is used.
 - Set `pbrun_tmp_dir` to a local SSD: pbrun writes large sort temp files there (default: the
-  working directory). Qualimap jobs declare `mem_gb=52`; pass `--resources mem_gb=<N>` to cap them.
+  working directory).
 - `[ncpu]` should be larger than 20 (the GPU rules use 20 threads); `[mem]` at most 80% of
   physical memory.
 - If `haplotypecaller` throws an overflow error, check the BAMs for regions with extremely

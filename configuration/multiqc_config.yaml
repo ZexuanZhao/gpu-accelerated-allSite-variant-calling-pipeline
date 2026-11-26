@@ -1,0 +1,23 @@
+## MultiQC settings for the cross-species report (sample renaming comes from
+## qc_summary/multiqc_sample_names.yaml, passed as a second -c).
+title: "All-site variant calling QC"
+extra_fn_clean_exts:
+  - ".dup_metrics"
+  - ".fastp"
+## mosdepth runs twice per sample; the window run is for coverage tracks only
+fn_ignore_files:
+  - "*.windows.*"
+## the per-species TSVs are joined into qc_summary/*_mqc.tsv; do not read them as custom content
+fn_ignore_paths:
+  - "*/region_beds/*"
+report_section_order:
+  sample_flags:
+    order: 1000
+  pi_summary:
+    order: 990
+  filter_stats:
+    order: 980
+  kinship:
+    order: 970
+  pca_table:
+    order: 960

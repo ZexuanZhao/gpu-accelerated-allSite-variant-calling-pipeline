@@ -3,6 +3,4 @@ channels:
   - bioconda
 dependencies:
   - fastqc =0.13.0
-  - qualimap =2.3
-  - bamtools =2.5.3
   - multiqc =1.35

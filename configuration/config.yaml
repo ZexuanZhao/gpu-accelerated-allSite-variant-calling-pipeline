@@ -79,3 +79,17 @@ f_missing_max: 0.5
 pixy:
   window_sizes: [10000, 100000]
   threads: 8
+
+## QC report: plink2 LD pruning (window variants, step, r2) before PCA, and the thresholds of
+## the PASS/WARN flags in qc_summary/sample_flags_mqc.tsv (see scripts/qc_summary.py)
+qc_report:
+  ld_prune: "50 10 0.2"
+  flags:
+    mapping_rate_min: 0.90     # absolute
+    error_rate_rel_max: 2.0    # x species median
+    het_rate_rel_low: 0.2      # x species median (haploid male? inbred?)
+    het_rate_rel_high: 2.0     # x species median (mixed DNA?)
+    ab_outer_excess: 0.15      # fraction of hets with AB < 0.3 or > 0.7 above species median
+    kinship_duplicate: 0.45    # KING; haplodiploid full sisters ~0.375, duplicates ~0.5
+    kinship_report_min: 0.0884 # pairs listed in the kinship table
+    pca_outlier_sd: 3.0        # robust SDs (1.4826 x MAD) from the species median

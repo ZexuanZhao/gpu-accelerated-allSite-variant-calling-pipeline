@@ -12,6 +12,7 @@ include: "rules/2.mapping.smk"
 include: "rules/3.variant_calling.smk"
 include: "rules/4.vcf_filtering.smk"
 include: "rules/5.diversity.smk"
+include: "rules/6.qc_report.smk"
 
 rule all:
     input:
