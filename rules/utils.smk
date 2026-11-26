@@ -15,7 +15,9 @@ if not ENABLED_SPECIES:
 def load_sample_sheet(path):
     """Read the sample sheet (one row per read pair) and validate it.
 
-    Columns: species_id, sample, ploidy, r1, r2 and optionally min_dp, max_dp.
+    Columns: species_id, sample, ploidy, r1, r2 and optionally min_dp, max_dp, include
+    (yes/no, default yes; all rows of a sample must agree) and note (free text, not used).
+    Samples with include = no are left out of the run.
     Returns {species: {sample: {"ploidy": int, "min_dp": str, "max_dp": str,
                                 "units": [(r1, r2), ...]}}} for enabled species only.
     """
@@ -29,11 +31,19 @@ def load_sample_sheet(path):
         raise ValueError(f"Sample sheet {path} lacks column(s): {', '.join(missing)}")
     sheet = {}
     seen_fastq = set()
+    include_flag = {}
     for n, row in enumerate(rows, start=2):
-        row = {k: (v or "").strip() for k, v in row.items()}
+        row = {k: (v or "").strip() for k, v in row.items() if k is not None}
         sp, sm = row["species_id"], row["sample"]
         if sp not in SPECIES_CFG:
             raise ValueError(f"Sample sheet line {n}: species '{sp}' is not in the config species table.")
+        inc = (row.get("include", "") or "yes").lower()
+        if inc not in ("yes", "no"):
+            raise ValueError(f"Sample sheet line {n}: include must be yes, no or empty.")
+        if include_flag.setdefault((sp, sm), inc) != inc:
+            raise ValueError(f"Sample sheet line {n}: include differs between rows of {sp}/{sm}.")
+        if inc == "no":
+            continue
         for f in (row["r1"], row["r2"]):
             if f in seen_fastq:
                 raise ValueError(f"Sample sheet line {n}: FASTQ listed twice: {f}")

@@ -56,6 +56,12 @@ pixy run per species.
   | `ploidy` | 1, 2, ... (same in all rows of a sample) |
   | `r1`, `r2` | paths to the read files |
   | `min_dp`, `max_dp` | optional per-sample depth window; empty = computed |
+  | `include` | optional `yes`/`no` (empty = yes); `no` leaves the sample out but keeps it on record |
+  | `note` | optional free text (why a sample is special); not used by the workflow |
+
+  Per-sample decisions live in the sample sheet. Changing `min_dp`/`max_dp` re-runs only the
+  filtering (the raw interval VCFs are kept); changing `include` re-runs the joint genotyping
+  of that species (the per-sample GVCFs are reused).
 
 - **Config** (copy `configuration/config.yaml`): `sample_sheet`, `outdir`, the `species`
   table (`reference`, `enabled`, optional `regions_bed` = BED with chrom, start, end, label),
