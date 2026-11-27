@@ -2,8 +2,9 @@
 ## report for all species of the run.
 
 ## KING kinship between all sample pairs of a species, and PCA on LD-pruned SNPs (plink2).
-## --bad-freqs: allele frequencies come from the few samples of the species (plink2 otherwise
-## refuses below 50 samples).
+## --bad-freqs / --bad-ld: allele frequencies and LD come from the few samples of the species
+## (plink2 otherwise refuses below 50 samples). PCA needs MAF >= 1/(4 sqrt(n)) (plink2's GRM
+## floor), so pruning and PCA use that --maf; KING uses all SNPs.
 rule plink_king_pca:
     conda:
         os.path.join(workflow.basedir, "envs/plink2.yaml")
@@ -17,7 +18,8 @@ rule plink_king_pca:
     params:
         prefix = lambda wc: P(wc.species, "qc", "plink", wc.species),
         n_pc = lambda wc: max(1, min(10, len(samples_of(wc.species)) - 1)),
-        prune = config["qc_report"]["ld_prune"]
+        prune = config["qc_report"]["ld_prune"],
+        maf = lambda wc: round(0.25 / len(samples_of(wc.species)) ** 0.5 + 0.001, 4)
     threads:
         4
     log:
@@ -26,8 +28,9 @@ rule plink_king_pca:
         """
         common="--vcf {input.vcf} --allow-extra-chr --set-all-var-ids @:# --snps-only --max-alleles 2 --threads {threads}"
         plink2 $common --make-king-table --out {params.prefix} > {log} 2>&1
-        plink2 $common --bad-freqs --indep-pairwise {params.prune} --out {params.prefix}.prune >> {log} 2>&1
-        plink2 $common --bad-freqs --extract {params.prefix}.prune.prune.in --pca {params.n_pc} \
+        plink2 $common --bad-freqs --bad-ld --maf {params.maf} --indep-pairwise {params.prune} \
+            --out {params.prefix}.prune >> {log} 2>&1
+        plink2 $common --bad-freqs --maf {params.maf} --extract {params.prefix}.prune.prune.in --pca {params.n_pc} \
             --out {params.prefix} >> {log} 2>&1
         """
 
