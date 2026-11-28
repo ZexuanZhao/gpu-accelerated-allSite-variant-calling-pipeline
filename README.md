@@ -86,8 +86,8 @@ Across species (`<outdir>/`): `multiqc/all_species_multiqc_report.html`;
 `filter_stats_mqc.tsv`, `pi_mqc.tsv`.
 
 ## Environments
-Runner: the existing kremer env `snakemake_singularity` (`environment.yaml` records it:
-snakemake 8.29.3, singularity 3.8.6). Rule envs, with pinned main tools: `envs/tools.yaml`
+Runner: the shared kremer env `snakemake9` (`environment.yaml` records it: snakemake 9.27.2,
+apptainer 1.5.4, which provides `singularity`). Runs before 2026-11-28 used snakemake 8.29.3. Rule envs, with pinned main tools: `envs/tools.yaml`
 (bcftools/samtools/htslib 1.25, bedtools 2.31.1, bwa 0.7.19, fastp 1.4.0), `envs/mosdepth.yaml`
 (mosdepth 0.3.14; own env because it needs htslib < 1.25),
 `envs/qc.yaml` (FastQC 0.13.0, MultiQC 1.35), `envs/gatk4.yaml` (GATK 4.6.2.0),
@@ -99,7 +99,7 @@ Parabricks: `clara-parabricks` in the config (4.6.0-1).
 Run from the directory that should hold `.snakemake/` (e.g. the project's run directory):
 
 ```bash
-conda activate snakemake_singularity
+conda activate snakemake9
 snakemake -s <workflow>/Snakefile --configfile config.yaml \
     --use-conda --use-singularity \
     --singularity-args '--nv -B .:/dum --no-home -B $HOME:$HOME' \

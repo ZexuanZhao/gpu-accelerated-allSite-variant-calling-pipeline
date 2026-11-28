@@ -1,11 +1,14 @@
-## Snakemake runner on kremer: the existing env snakemake_singularity (do not create a new one).
-## Recorded 2026-11-25: snakemake 8.29.3, singularity 3.8.6, python 3.12.9.
-name: snakemake_singularity
+## Snakemake runner on kremer: the shared env snakemake9 (do not create a new one per workflow).
+## Recorded 2026-11-28: snakemake-minimal 9.27.2, apptainer 1.5.4 (provides `singularity`),
+## python 3.13; it replaced snakemake_singularity (snakemake 8.29.3), removed 2026-11-28.
+name: snakemake9
 channels:
   - conda-forge
   - bioconda
 dependencies:
-  - python =3.12
-  - snakemake =8.29.3
-  - singularity =3.8.6
+  - python
+  - snakemake-minimal >=9,<10
+  - biopython
+  - mamba
+  - apptainer
   - psutil
