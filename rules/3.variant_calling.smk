@@ -17,6 +17,8 @@ rule haplotypeCallerGPU:
         20
     resources:
         gpus = 1
+    ## Prefer GPU jobs when cores free up, so the GPU is not left idle behind CPU jobs.
+    priority: 10
     container:
         config["clara-parabricks"]
     shell:
